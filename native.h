@@ -6,7 +6,7 @@ void beginSubmenu(const char *title);
 void endSubmenu(void);
 void notice(const char *title, const char *detail);
 char *askText(const char *title, const char *initial);
-char *askDate(const char *initial);
+char *askDateTime(const char *initial, const char *source);
 char *saveFile(const char *initial);
 void loginItem(void);
 int choose(const char *title, const char *detail, const char **options, int count);

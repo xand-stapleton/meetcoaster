@@ -42,6 +42,9 @@ static NSMenu *current;
         }
     }
 }
+- (void)finishDateTime:(NSButton *)sender {
+    [NSApp stopModalWithCode:sender.tag];
+}
 - (void)performAction:(NSMenuItem *)sender {
     performMenuAction((int)sender.tag);
 }
@@ -93,38 +96,95 @@ void loginItem(void) {
         entry.state = status == SMAppServiceStatusEnabled ? NSControlStateValueOn : NSControlStateValueOff;
     }
 }
-static BOOL edit(NSAlert *panel, NSView *view, NSString *button) {
+static BOOL edit(NSAlert *panel, NSView *view, NSView *focus, NSString *button) {
     panel.accessoryView = view;
     [panel addButtonWithTitle:button];
     [panel addButtonWithTitle:@"Cancel"];
-    panel.window.initialFirstResponder = view;
+    panel.window.initialFirstResponder = focus;
     return [panel runModal] == NSAlertFirstButtonReturn;
 }
 char *askText(const char *title, const char *initial) {
     NSAlert *panel = alert(title, "");
     NSTextField *field = [[NSTextField alloc] initWithFrame:NSMakeRect(0, 0, 300, 24)];
     field.stringValue = str(initial);
-    return edit(panel, field, @"Continue") ? strdup(field.stringValue.UTF8String) : NULL;
+    return edit(panel, field, field, @"Continue") ? strdup(field.stringValue.UTF8String) : NULL;
 }
-char *askDate(const char *initial) {
-    NSAlert *panel = alert("Meeting date", "");
+char *askDateTime(const char *initial, const char *source) {
     NSDateFormatter *format = [NSDateFormatter new];
     format.locale = [NSLocale localeWithLocaleIdentifier:@"en_US_POSIX"];
     format.timeZone = [NSTimeZone timeZoneForSecondsFromGMT:0];
+    // Edit wall-clock components in a neutral zone. Go resolves DST in the source zone.
+    format.dateFormat = @"yyyy-MM-dd HH:mm";
+    NSDate *initialValue = [format dateFromString:str(initial)];
+    NSDatePicker *calendar = [NSDatePicker new];
+    calendar.datePickerStyle = NSDatePickerStyleClockAndCalendar;
+    calendar.datePickerElements = NSDatePickerElementFlagYearMonthDay;
+    calendar.timeZone = format.timeZone;
+    calendar.dateValue = initialValue;
+    [calendar sizeToFit];
+
+    // The graphical picker draws a fixed-size grid. Scale its coordinate system
+    // so the day cells and their click targets grow together.
+    NSSize grid = calendar.frame.size;
+    CGFloat scale = 1.44;
+    NSSize enlarged = NSMakeSize(grid.width * scale, grid.height * scale);
+    NSView *calendarContainer = [[NSView alloc] initWithFrame:(NSRect){NSZeroPoint, enlarged}];
+    [calendarContainer setBoundsSize:grid];
+    [calendarContainer addSubview:calendar];
+    [calendar setFrameOrigin:NSZeroPoint];
+
+    NSDatePicker *timeField = [NSDatePicker new];
+    timeField.datePickerStyle = NSDatePickerStyleTextFieldAndStepper;
+    timeField.datePickerElements = NSDatePickerElementFlagHourMinute;
+    timeField.timeZone = format.timeZone;
+    timeField.dateValue = initialValue;
+    [timeField setAccessibilityLabel:@"Meeting time"];
+    timeField.controlSize = NSControlSizeLarge;
+    timeField.font = [NSFont systemFontOfSize:16];
+    [timeField sizeToFit];
+
+    NSButton *cancel = [NSButton buttonWithTitle:@"Cancel" target:NSApp.delegate action:@selector(finishDateTime:)];
+    cancel.keyEquivalent = @"\e";
+    cancel.tag = NSModalResponseCancel;
+    NSButton *apply = [NSButton buttonWithTitle:@"Set" target:NSApp.delegate action:@selector(finishDateTime:)];
+    apply.keyEquivalent = @"\r";
+    apply.tag = NSModalResponseOK;
+    NSStackView *buttons = [NSStackView stackViewWithViews:@[cancel, apply]];
+    buttons.spacing = 8;
+    [buttons setFrameSize:buttons.fittingSize];
+
+    // Size the panel from its controls, centering each row on the same axis.
+    NSArray<NSView *> *rows = @[buttons, timeField, calendarContainer];
+    CGFloat width = ceil(MAX(enlarged.width, MAX(timeField.frame.size.width, buttons.frame.size.width))) + 24;
+    CGFloat y = 10;
+    for (NSView *row in rows) {
+        [row setFrameOrigin:NSMakePoint((width - row.frame.size.width) / 2, y)];
+        y = NSMaxY(row.frame) + 8;
+    }
+    NSPanel *panel = [[NSPanel alloc] initWithContentRect:NSMakeRect(0, 0, width, y)
+                                               styleMask:NSWindowStyleMaskTitled
+                                                 backing:NSBackingStoreBuffered defer:NO];
+    panel.title = [@"Set date and time · " stringByAppendingString:str(source)];
+    for (NSView *row in rows) [panel.contentView addSubview:row];
+    panel.defaultButtonCell = apply.cell;
+    panel.initialFirstResponder = timeField;
+    [panel center];
+    [NSApp activateIgnoringOtherApps:YES];
+    NSModalResponse response = [NSApp runModalForWindow:panel];
+    [panel orderOut:nil];
+    if (response != NSModalResponseOK) return NULL;
+
     format.dateFormat = @"yyyy-MM-dd";
-    NSDatePicker *picker = [NSDatePicker new];
-    picker.datePickerStyle = NSDatePickerStyleClockAndCalendar;
-    picker.datePickerElements = NSDatePickerElementFlagYearMonthDay;
-    picker.timeZone = format.timeZone;
-    picker.dateValue = [format dateFromString:str(initial)];
-    [picker sizeToFit];
-    return edit(panel, picker, @"Set Date") ? strdup([format stringFromDate:picker.dateValue].UTF8String) : NULL;
+    NSString *date = [format stringFromDate:calendar.dateValue];
+    format.dateFormat = @"HH:mm";
+    NSString *value = [NSString stringWithFormat:@"%@ %@", date, [format stringFromDate:timeField.dateValue]];
+    return strdup(value.UTF8String);
 }
 int choose(const char *title, const char *detail, const char **options, int count) {
     NSAlert *panel = alert(title, detail);
     NSPopUpButton *list = [[NSPopUpButton alloc] initWithFrame:NSMakeRect(0, 0, 360, 28) pullsDown:NO];
     for (int i = 0; i < count; i++) [list addItemWithTitle:str(options[i])];
-    return edit(panel, list, @"Select") ? (int)list.indexOfSelectedItem : -1;
+    return edit(panel, list, list, @"Select") ? (int)list.indexOfSelectedItem : -1;
 }
 char *saveFile(const char *initial) {
     [NSApp activateIgnoringOtherApps:YES];

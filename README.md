@@ -2,7 +2,7 @@
 
 A macOS menu bar meeting planner. Open **Meetcoaster** in the menu bar to see
 the meeting time in every saved location. Choose a city to inspect its clock
-changes, make it the source, or remove it. Use **Set time** or **Set date** directly below the meeting time.
+changes, make it the source, or remove it. Use **Set date and time** directly below the meeting time.
 **Edit meeting** changes the title and duration. The menu also supports city
 search and calendar export.
 

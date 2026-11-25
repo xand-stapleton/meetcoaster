@@ -120,19 +120,15 @@ func buildMenu() {
 func plannerItems() {
 	item(meeting.Title+" · "+meeting.Duration.String(), nil)
 	item(meeting.At.Format("Mon 02 Jan 2006 · 15:04 MST")+" · "+cfg.Source, nil)
-	item("Set time…", func() error {
-		if clock, ok := ask("Time in "+cfg.Source, meeting.At.Format("15:04")); ok {
-			return setWall(meeting.At.Format(time.DateOnly), clock)
-		}
-		return nil
-	})
-	item("Set date…", func() error {
+	item("Set date and time…", func() error {
 		var ss nativeStrings
 		defer ss.free()
-		if date, ok := take(C.askDate(ss.add(meeting.At.Format(time.DateOnly)))); ok {
-			return setWall(date, meeting.At.Format("15:04"))
+		value, ok := take(C.askDateTime(ss.add(meeting.At.Format("2006-01-02 15:04")), ss.add(cfg.Source)))
+		if !ok {
+			return nil
 		}
-		return nil
+		date, clock, _ := strings.Cut(value, " ")
+		return setWall(date, clock)
 	})
 	C.separator()
 	now := time.Now()
