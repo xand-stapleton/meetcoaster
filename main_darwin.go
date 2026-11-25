@@ -3,7 +3,7 @@ package main
 
 /*
 #cgo CFLAGS: -fobjc-arc
-#cgo LDFLAGS: -framework Cocoa -framework UniformTypeIdentifiers
+#cgo LDFLAGS: -framework Cocoa -framework UniformTypeIdentifiers -framework ServiceManagement
 #include "native.h"
 */
 import "C"
@@ -41,6 +41,7 @@ func main() {
 		cfg, startupErr = settings.Load(path)
 	}
 	if startupErr == nil {
+		cfg = cfg.WithLocalSource()
 		meeting, startupErr = planner.NewMeeting(cfg, time.Now())
 	}
 	C.runApp()
@@ -112,12 +113,27 @@ func buildMenu() {
 		plannerItems()
 	}
 	C.separator()
+	C.loginItem()
 	item("Quit Meetcoaster", func() error { os.Exit(0); return nil })
 }
 
 func plannerItems() {
 	item(meeting.Title+" · "+meeting.Duration.String(), nil)
 	item(meeting.At.Format("Mon 02 Jan 2006 · 15:04 MST")+" · "+cfg.Source, nil)
+	item("Set time…", func() error {
+		if clock, ok := ask("Time in "+cfg.Source, meeting.At.Format("15:04")); ok {
+			return setWall(meeting.At.Format(time.DateOnly), clock)
+		}
+		return nil
+	})
+	item("Set date…", func() error {
+		var ss nativeStrings
+		defer ss.free()
+		if date, ok := take(C.askDate(ss.add(meeting.At.Format(time.DateOnly)))); ok {
+			return setWall(date, meeting.At.Format("15:04"))
+		}
+		return nil
+	})
 	C.separator()
 	now := time.Now()
 	for _, p := range cfg.Locations {
@@ -133,7 +149,6 @@ func plannerItems() {
 
 	C.separator()
 	item("Export calendar event…", export)
-	item("Delete calendar file…", deleteFile)
 }
 
 func submenu(label string, populate func()) {
@@ -145,20 +160,6 @@ func submenu(label string, populate func()) {
 }
 
 func editItems() {
-	item("Set date…", func() error {
-		var ss nativeStrings
-		defer ss.free()
-		if date, ok := take(C.askDate(ss.add(meeting.At.Format(time.DateOnly)))); ok {
-			return setWall(date, meeting.At.Format("15:04"))
-		}
-		return nil
-	})
-	item("Set time…", func() error {
-		if clock, ok := ask("Time in "+cfg.Source, meeting.At.Format("15:04")); ok {
-			return setWall(meeting.At.Format(time.DateOnly), clock)
-		}
-		return nil
-	})
 	item("Previous day", func() error { return shiftDay(-1) })
 	item("Next day", func() error { return shiftDay(1) })
 	item("Back 15 minutes", func() error { meeting.At = meeting.At.Add(-15 * time.Minute); return nil })
@@ -208,6 +209,9 @@ func locationMenu(p places.Location, now time.Time) {
 	if p.Name != cfg.Source {
 		C.separator()
 		item("Use as source", func() error { next := cfg; next.Source = p.Name; return save(next) })
+		if cfg.IsLocalSource(p.Name) {
+			return
+		}
 		item("Remove location", func() error {
 			next := cfg
 			if err := next.RemoveLocation(p.Name); err != nil {
@@ -305,18 +309,9 @@ func showResults() {
 func export() error {
 	var ss nativeStrings
 	defer ss.free()
-	file, ok := take(C.chooseFile(1, ss.add("meetlet-"+meeting.At.Format("20060102-1504")+".ics")))
+	file, ok := take(C.saveFile(ss.add("meetlet-" + meeting.At.Format("20060102-1504") + ".ics")))
 	if !ok {
 		return nil
 	}
 	return calendar.Write(file, meeting, time.Now())
-}
-func deleteFile() error {
-	var ss nativeStrings
-	defer ss.free()
-	file, ok := take(C.chooseFile(0, ss.add("")))
-	if !ok || C.confirm(ss.add("Delete calendar file?"), ss.add(file), ss.add("Delete")) == 0 {
-		return nil
-	}
-	return calendar.Delete(file)
 }

@@ -1,5 +1,6 @@
 APP := build/Meetcoaster.app
-.PHONY: build run test
+APPLICATIONS_DIR ?= $(HOME)/Applications
+.PHONY: build run test install
 build:
 	mkdir -p "$(APP)/Contents/MacOS"
 	cp Info.plist "$(APP)/Contents/Info.plist"
@@ -12,3 +13,8 @@ run: build
 test:
 	go test ./...
 	cd meetlet-lib && go test ./...
+
+install: build
+	mkdir -p "$(DESTDIR)$(APPLICATIONS_DIR)"
+	ditto "$(APP)" "$(DESTDIR)$(APPLICATIONS_DIR)/Meetcoaster.app"
+	codesign --verify --strict "$(DESTDIR)$(APPLICATIONS_DIR)/Meetcoaster.app"

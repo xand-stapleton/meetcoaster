@@ -1,5 +1,6 @@
 #import <Cocoa/Cocoa.h>
 #import <UniformTypeIdentifiers/UniformTypeIdentifiers.h>
+#import <ServiceManagement/ServiceManagement.h>
 #import "native.h"
 #import "_cgo_export.h"
 
@@ -23,6 +24,23 @@ static NSMenu *current;
     current = menu;
     buildMenu();
     current = nil;
+}
+- (void)toggleLogin:(NSMenuItem *)sender {
+    if (@available(macOS 13.0, *)) {
+        SMAppService *service = SMAppService.mainAppService;
+        if (service.status == SMAppServiceStatusRequiresApproval) {
+            [SMAppService openSystemSettingsLoginItems];
+            return;
+        }
+        NSError *error = nil;
+        BOOL ok = service.status == SMAppServiceStatusEnabled
+            ? [service unregisterAndReturnError:&error] : [service registerAndReturnError:&error];
+        if (service.status == SMAppServiceStatusRequiresApproval) {
+            [SMAppService openSystemSettingsLoginItems];
+        } else if (!ok) {
+            notice("Launch at Login", error.localizedDescription.UTF8String);
+        }
+    }
 }
 - (void)performAction:(NSMenuItem *)sender {
     performMenuAction((int)sender.tag);
@@ -65,11 +83,15 @@ static NSAlert *alert(const char *title, const char *detail) {
     return panel;
 }
 void notice(const char *title, const char *detail) { [alert(title, detail) runModal]; }
-int confirm(const char *title, const char *detail, const char *button) {
-    NSAlert *panel = alert(title, detail);
-    [panel addButtonWithTitle:@"Cancel"];
-    [panel addButtonWithTitle:str(button)];
-    return [panel runModal] == NSAlertSecondButtonReturn;
+void loginItem(void) {
+    if (@available(macOS 13.0, *)) {
+        SMAppServiceStatus status = SMAppService.mainAppService.status;
+        NSString *title = status == SMAppServiceStatusRequiresApproval
+            ? @"Approve Launch at Login…" : @"Launch at Login";
+        NSMenuItem *entry = [current addItemWithTitle:title action:@selector(toggleLogin:) keyEquivalent:@""];
+        entry.target = NSApp.delegate;
+        entry.state = status == SMAppServiceStatusEnabled ? NSControlStateValueOn : NSControlStateValueOff;
+    }
 }
 static BOOL edit(NSAlert *panel, NSView *view, NSString *button) {
     panel.accessoryView = view;
@@ -104,12 +126,11 @@ int choose(const char *title, const char *detail, const char **options, int coun
     for (int i = 0; i < count; i++) [list addItemWithTitle:str(options[i])];
     return edit(panel, list, @"Select") ? (int)list.indexOfSelectedItem : -1;
 }
-char *chooseFile(int saving, const char *initial) {
+char *saveFile(const char *initial) {
     [NSApp activateIgnoringOtherApps:YES];
-    NSSavePanel *panel = saving ? [NSSavePanel savePanel] : [NSOpenPanel openPanel];
+    NSSavePanel *panel = [NSSavePanel savePanel];
     panel.allowedContentTypes = @[[UTType typeWithFilenameExtension:@"ics"]];
-    if (saving) panel.nameFieldStringValue = str(initial);
-    else panel.prompt = @"Choose";
+    panel.nameFieldStringValue = str(initial);
     return [panel runModal] == NSModalResponseOK ? strdup(panel.URL.path.fileSystemRepresentation) : NULL;
 }
 void finishSearchOnMain(void) {
