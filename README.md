@@ -3,3 +3,12 @@
 Meetcoaster is a macOS menu bar app for planning meetings across time zones. Edit meeting details from the menu, compare cities, and export a calendar event. Meetcoaster shares its settings and scheduling code with my other project [Meetlet](https://github.com/xand-stapleton/meetlet) through its associated library [Meetlet Lib](https://github.com/xand-stapleton/meetlet-lib).
 
 With Go 1.25 or later and Xcode Command Line Tools, use `make run` to launch, `make install` to install in `/Applications`, or `make test` to run the tests. For a per-user install, run `make install APPLICATIONS_DIR="$HOME/Applications"`. Launch at Login requires macOS 13 or later.
+
+## Demo
+
+https://github.com/user-attachments/assets/cbfcb1e3-c6cd-4370-a55a-ca995ce5b2a9
+
+
+
+
+
