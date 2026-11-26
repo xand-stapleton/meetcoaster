@@ -5,3 +5,7 @@ Meetcoaster is a macOS menu bar app for planning meetings across time zones. Edi
 With Go 1.25 or later and Xcode Command Line Tools, use `make run` to launch, `make install` to install in `/Applications`, or `make test` to run the tests. For a per-user install, run `make install APPLICATIONS_DIR="$HOME/Applications"`. Launch at Login requires macOS 13 or later.
 
 Public holiday lookups use [Nager.Date](https://github.com/nager/Nager.Date). They require internet access and show nationwide public holidays only.
+
+## Demo
+
+https://github.com/user-attachments/assets/cbfcb1e3-c6cd-4370-a55a-ca995ce5b2a9
