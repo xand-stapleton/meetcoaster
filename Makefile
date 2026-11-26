@@ -1,9 +1,9 @@
 APP := build/Meetcoaster.app
-APPLICATIONS_DIR ?= $(HOME)/Applications
+APPLICATIONS_DIR ?= /Applications
 .PHONY: build run test install
 build:
 	mkdir -p "$(APP)/Contents/MacOS" "$(APP)/Contents/Resources"
-	cp img/menu-bar.png "$(APP)/Contents/Resources/"
+	cp img/menu-bar.png img/Meetcoaster.icns "$(APP)/Contents/Resources/"
 	cp Info.plist "$(APP)/Contents/Info.plist"
 	go build -o "$(APP)/Contents/MacOS/meetcoaster" .
 	codesign --force --sign - "$(APP)"
