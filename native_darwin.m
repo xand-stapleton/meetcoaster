@@ -13,7 +13,16 @@ static NSMenu *current;
 @implementation MenuDelegate
 - (void)applicationDidFinishLaunching:(NSNotification *)note {
     statusItem = [NSStatusBar.systemStatusBar statusItemWithLength:NSVariableStatusItemLength];
-    statusItem.button.title = @"Meetcoaster";
+    NSURL *iconURL = [NSBundle.mainBundle URLForResource:@"menu-bar" withExtension:@"png"];
+    NSImage *icon = iconURL ? [[NSImage alloc] initWithContentsOfURL:iconURL] : nil;
+    if (icon) {
+        icon.size = NSMakeSize(18 * icon.size.width / icon.size.height, 18);
+        icon.template = YES;
+        statusItem.button.image = icon;
+    } else {
+        statusItem.button.title = @"Meetcoaster";
+    }
+    [statusItem.button setAccessibilityLabel:@"Meetcoaster"];
     statusItem.button.toolTip = @"Meeting planner";
     statusItem.menu = [NSMenu new];
     statusItem.menu.autoenablesItems = NO;
