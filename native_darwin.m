@@ -7,6 +7,8 @@
 static NSString *str(const char *s) { return [NSString stringWithUTF8String:s]; }
 static NSStatusItem *statusItem;
 static NSMenu *current;
+static NSMutableDictionary<NSString *, NSMenuItem *> *nextHolidays;
+static NSMutableDictionary<NSString *, NSMenuItem *> *meetingHolidays;
 
 static void reopenMenu(void) {
     dispatch_async(dispatch_get_main_queue(), ^{
@@ -36,6 +38,8 @@ static void reopenMenu(void) {
 }
 - (void)menuNeedsUpdate:(NSMenu *)menu {
     [menu removeAllItems];
+    nextHolidays = [NSMutableDictionary new];
+    meetingHolidays = [NSMutableDictionary new];
     current = menu;
     buildMenu();
     current = nil;
@@ -86,6 +90,21 @@ void item(const char *title, int action) {
         entry.action = @selector(performAction:);
         entry.tag = action;
     }
+}
+void holidayItem(const char *name, const char *title, int warning) {
+    NSMenuItem *entry = [current addItemWithTitle:str(title) action:NULL keyEquivalent:@""];
+    entry.enabled = NO;
+    entry.hidden = title[0] == '\0';
+    (warning ? meetingHolidays : nextHolidays)[str(name)] = entry;
+}
+void updateHolidayItems(const char *name, const char *next, const char *warning) {
+    nextHolidays[str(name)].title = str(next);
+    NSMenuItem *entry = meetingHolidays[str(name)];
+    entry.title = str(warning);
+    entry.hidden = warning[0] == '\0';
+}
+void finishHolidayLookup(void) {
+    dispatch_async(dispatch_get_main_queue(), ^{ updateHolidayLabels(); });
 }
 void separator(void) { [current addItem:NSMenuItem.separatorItem]; }
 void beginSubmenu(const char *title) {

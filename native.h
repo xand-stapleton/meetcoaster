@@ -11,3 +11,6 @@ char *saveFile(const char *initial);
 void loginItem(void);
 int choose(const char *title, const char *detail, const char **options, int count);
 void finishSearchOnMain(void);
+void holidayItem(const char *name, const char *title, int warning);
+void updateHolidayItems(const char *name, const char *next, const char *warning);
+void finishHolidayLookup(void);

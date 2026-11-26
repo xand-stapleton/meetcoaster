@@ -44,6 +44,9 @@ func main() {
 		cfg = cfg.WithLocalSource()
 		meeting, startupErr = planner.NewMeeting(cfg, time.Now())
 	}
+	if startupErr == nil {
+		requestHolidays(time.Now())
+	}
 	C.runApp()
 }
 
@@ -124,7 +127,16 @@ func buildMenu() {
 func plannerItems() {
 	item(meeting.Title+" · "+meeting.Duration.String(), nil)
 	item(meeting.At.Format("Mon 02 Jan 2006 · 15:04 MST")+" · "+cfg.Source, nil)
+	C.separator()
 	now := time.Now()
+	requestHolidays(now)
+	for _, p := range cfg.Locations {
+		_, warning := holidayLabels(p.Name)
+		var ss nativeStrings
+		C.holidayItem(ss.add(p.Name), ss.add(warning), 1)
+		ss.free()
+	}
+	C.separator()
 	for _, p := range cfg.Locations {
 		locationMenu(p, now)
 	}
@@ -185,6 +197,7 @@ func locationMenu(p places.Location, now time.Time) {
 	defer C.endSubmenu()
 	abbr, offset := at.Zone()
 	item(p.Zone+" · "+abbr+" · "+planner.Offset(offset), nil)
+	C.separator()
 	if len(changes) == 0 {
 		item("No clock change between now and the meeting", nil)
 	} else {
@@ -196,6 +209,9 @@ func locationMenu(p places.Location, now time.Time) {
 	} else {
 		item("No clock change in the following year", nil)
 	}
+	C.separator()
+	nextHoliday, _ := holidayLabels(p.Name)
+	C.holidayItem(ss.add(p.Name), ss.add(nextHoliday), 0)
 	if p.Name != cfg.Source {
 		C.separator()
 		item("Use as source", func() error { next := cfg; next.Source = p.Name; return save(next) })
