@@ -1,6 +1,7 @@
 #include <stdlib.h>
 void runApp(void);
 void item(const char *title, int action);
+void heading(const char *title);
 void separator(void);
 void beginSubmenu(const char *title);
 void endSubmenu(void);

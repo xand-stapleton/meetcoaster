@@ -100,6 +100,12 @@ func item(title string, action func() error) {
 	C.item(ss.add(title), C.int(id))
 }
 
+func heading(title string) {
+	var ss nativeStrings
+	defer ss.free()
+	C.heading(ss.add(title))
+}
+
 //export performMenuAction
 func performMenuAction(id C.int) C.int {
 	if err := actions[int(id)](); err != nil {
@@ -125,8 +131,8 @@ func buildMenu() {
 }
 
 func plannerItems() {
-	item(meeting.Title+" · "+meeting.Duration.String(), nil)
-	item(meeting.At.Format("Mon 02 Jan 2006 · 15:04 MST")+" · "+cfg.Source, nil)
+	heading(meeting.Title + " · " + meeting.Duration.String())
+	heading(meeting.At.Format("Mon 02 Jan 2006 · 15:04 MST") + " · " + cfg.Source)
 	C.separator()
 	now := time.Now()
 	requestHolidays(now)
@@ -196,7 +202,7 @@ func locationMenu(p places.Location, now time.Time) {
 	C.beginSubmenu(ss.add(label))
 	defer C.endSubmenu()
 	abbr, offset := at.Zone()
-	item(p.Zone+" · "+abbr+" · "+planner.Offset(offset), nil)
+	heading(p.Zone + " · " + abbr + " · " + planner.Offset(offset))
 	C.separator()
 	if len(changes) == 0 {
 		item("No clock change between now and the meeting", nil)

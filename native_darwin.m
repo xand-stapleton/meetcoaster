@@ -91,6 +91,14 @@ void item(const char *title, int action) {
         entry.tag = action;
     }
 }
+void heading(const char *title) {
+    NSMenuItem *entry = [current addItemWithTitle:str(title) action:NULL keyEquivalent:@""];
+    NSFont *font = [[NSFontManager sharedFontManager] convertFont:[NSFont menuFontOfSize:0]
+                                                    toHaveTrait:NSBoldFontMask];
+    entry.attributedTitle = [[NSAttributedString alloc] initWithString:entry.title
+                                                           attributes:@{NSFontAttributeName: font}];
+    entry.enabled = NO;
+}
 void holidayItem(const char *name, const char *title, int warning) {
     NSMenuItem *entry = [current addItemWithTitle:str(title) action:NULL keyEquivalent:@""];
     entry.enabled = NO;
