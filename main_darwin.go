@@ -124,17 +124,6 @@ func buildMenu() {
 func plannerItems() {
 	item(meeting.Title+" · "+meeting.Duration.String(), nil)
 	item(meeting.At.Format("Mon 02 Jan 2006 · 15:04 MST")+" · "+cfg.Source, nil)
-	item("Set date and time…", func() error {
-		var ss nativeStrings
-		defer ss.free()
-		value, ok := take(C.askDateTime(ss.add(meeting.At.Format("2006-01-02 15:04")), ss.add(cfg.Source)))
-		if !ok {
-			return nil
-		}
-		date, clock, _ := strings.Cut(value, " ")
-		return setWall(date, clock)
-	})
-	C.separator()
 	now := time.Now()
 	for _, p := range cfg.Locations {
 		locationMenu(p, now)
@@ -145,25 +134,26 @@ func plannerItems() {
 		item("Add location…", search)
 	}
 	C.separator()
-	submenu("Edit meeting", editItems)
-
+	editItems()
 	C.separator()
 	item("Export calendar event…", export)
-}
-
-func submenu(label string, populate func()) {
-	var ss nativeStrings
-	defer ss.free()
-	C.beginSubmenu(ss.add(label))
-	defer C.endSubmenu()
-	populate()
 }
 
 func editItems() {
 	item("Previous day", func() error { return shiftDay(-1) })
 	item("Next day", func() error { return shiftDay(1) })
-	item("Back 15 minutes", func() error { meeting.At = meeting.At.Add(-15 * time.Minute); return nil })
-	item("Forward 15 minutes", func() error { meeting.At = meeting.At.Add(15 * time.Minute); return nil })
+	item("Back 1 hour", func() error { meeting.At = meeting.At.Add(-time.Hour); return nil })
+	item("Forward 1 hour", func() error { meeting.At = meeting.At.Add(time.Hour); return nil })
+	item("Set date and time…", func() error {
+		var ss nativeStrings
+		defer ss.free()
+		value, ok := take(C.askDateTime(ss.add(meeting.At.Format("2006-01-02 15:04")), ss.add(cfg.Source)))
+		if !ok {
+			return nil
+		}
+		date, clock, _ := strings.Cut(value, " ")
+		return setWall(date, clock)
+	})
 	item("Edit title…", func() error {
 		if s, ok := ask("Meeting title", meeting.Title); ok {
 			return meeting.SetTitle(s)
