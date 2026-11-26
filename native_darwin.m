@@ -8,6 +8,12 @@ static NSString *str(const char *s) { return [NSString stringWithUTF8String:s]; 
 static NSStatusItem *statusItem;
 static NSMenu *current;
 
+static void reopenMenu(void) {
+    dispatch_async(dispatch_get_main_queue(), ^{
+        [statusItem.button performClick:nil];
+    });
+}
+
 @interface MenuDelegate : NSObject <NSApplicationDelegate, NSMenuDelegate>
 @end
 @implementation MenuDelegate
@@ -55,7 +61,10 @@ static NSMenu *current;
     [NSApp stopModalWithCode:sender.tag];
 }
 - (void)performAction:(NSMenuItem *)sender {
-    performMenuAction((int)sender.tag);
+    int action = (int)sender.tag;
+    dispatch_async(dispatch_get_main_queue(), ^{
+        if (performMenuAction(action)) reopenMenu();
+    });
 }
 @end
 
@@ -203,5 +212,9 @@ char *saveFile(const char *initial) {
     return [panel runModal] == NSModalResponseOK ? strdup(panel.URL.path.fileSystemRepresentation) : NULL;
 }
 void finishSearchOnMain(void) {
-    dispatch_async(dispatch_get_main_queue(), ^{ showResults(); });
+    dispatch_async(dispatch_get_main_queue(), ^{
+        [statusItem.menu cancelTracking];
+        showResults();
+        reopenMenu();
+    });
 }

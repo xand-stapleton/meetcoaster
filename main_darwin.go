@@ -98,10 +98,14 @@ func item(title string, action func() error) {
 }
 
 //export performMenuAction
-func performMenuAction(id C.int) {
+func performMenuAction(id C.int) C.int {
 	if err := actions[int(id)](); err != nil {
 		notice("Meetcoaster", err.Error())
 	}
+	if searching {
+		return 0
+	}
+	return 1
 }
 
 //export buildMenu
